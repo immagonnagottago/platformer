@@ -2,41 +2,41 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Pixel Platformer</title>
+    <title>Integer Physics Platformer</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #1a1a1a; }
-        canvas { image-rendering: pixelated; border: 4px solid #333; background-color: #000; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #000; }
+        canvas { 
+            image-rendering: pixelated; 
+            width: 640px; 
+            height: 480px; 
+            border: 2px solid #444; 
+            background-color: #1a1a1a; 
+        }
     </style>
 </head>
 <body>
 
-<canvas id="gameCanvas" width="320" height="240"></canvas>
+<canvas id="gameCanvas" width="160" height="120"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    
-    // Pixel scale settings
-    const CELL_SIZE = 8;
-    const COLS = 40;
-    const ROWS = 30;
-    
-    // World Grid (0: empty, 1: dirt)
-    const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
 
-    // Create a floor
-    for (let x = 0; x < COLS; x++) grid[ROWS - 1][x] = 1;
-    // Add some random blocks
-    for (let i = 0; i < 20; i++) {
-        grid[Math.floor(Math.random() * ROWS)][Math.floor(Math.random() * COLS)] = 1;
-    }
+    // Integer constants for physics
+    // Using larger multipliers lets us simulate sub-pixel movement with integers
+    const FIXED_SCALE = 16; 
+    const GRAVITY = 2;
+    const JUMP_STRENGTH = -32;
+    const SPEED = 2;
 
     const player = {
-        x: 16, y: 16,
-        width: 6, height: 6,
-        vx: 0, vy: 0,
-        jumping: false,
-        color: '#ff3e3e'
+        x: 40 * FIXED_SCALE,
+        y: 40 * FIXED_SCALE,
+        width: 8 * FIXED_SCALE,
+        height: 8 * FIXED_SCALE,
+        vx: 0,
+        vy: 0,
+        onGround: false
     };
 
     const keys = {};
@@ -44,52 +44,48 @@
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
     function update() {
-        // Horizontal
-        if (keys['ArrowLeft']) player.vx = -1.5;
-        else if (keys['ArrowRight']) player.vx = 1.5;
+        // Horizontal Movement
+        if (keys['ArrowLeft']) player.vx = -SPEED * FIXED_SCALE;
+        else if (keys['ArrowRight']) player.vx = SPEED * FIXED_SCALE;
         else player.vx = 0;
 
         // Jump (Z)
-        if (keys['KeyZ'] && !player.jumping) {
-            player.vy = -4;
-            player.jumping = true;
+        if (keys['KeyZ'] && player.onGround) {
+            player.vy = JUMP_STRENGTH * FIXED_SCALE;
+            player.onGround = false;
         }
 
-        // Gravity
-        player.vy += 0.2;
-        
-        // Simple Physics Step
+        // Apply Gravity
+        player.vy += GRAVITY;
+
+        // Apply Velocity
         player.x += player.vx;
         player.y += player.vy;
 
-        // Basic Collision with Grid
-        let gridX = Math.floor(player.x / CELL_SIZE);
-        let gridY = Math.floor(player.y / CELL_SIZE);
-
-        if (player.y + player.height > ROWS * CELL_SIZE) {
-            player.y = (ROWS * CELL_SIZE) - player.height;
+        // Floor Collision (Integer boundary)
+        const floorY = 100 * FIXED_SCALE;
+        if (player.y + player.height > floorY) {
+            player.y = floorY - player.height;
             player.vy = 0;
-            player.jumping = false;
+            player.onGround = true;
         }
     }
 
     function draw() {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Grid
-        for (let y = 0; y < ROWS; y++) {
-            for (let x = 0; x < COLS; x++) {
-                if (grid[y][x] === 1) {
-                    ctx.fillStyle = '#8b4513'; // Dirt color
-                    ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
-                }
-            }
-        }
+        // Draw Floor
+        ctx.fillStyle = '#4a3b2a';
+        ctx.fillRect(0, 100, canvas.width, 20);
 
-        // Draw Player
-        ctx.fillStyle = player.color;
-        ctx.fillRect(player.x, player.y, player.width, player.height);
+        // Draw Player (Shift back to real screen coordinates)
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillRect(
+            Math.floor(player.x / FIXED_SCALE), 
+            Math.floor(player.y / FIXED_SCALE), 
+            8, 
+            8
+        );
     }
 
     function loop() {
