@@ -12,12 +12,8 @@ let GRID_H = 0;
 let grid;
 let next;
 
-let waterDir;
-
 const EMPTY = 0;
 const SAND = 1;
-const WATER = 2;
-const STONE = 3;
 
 // ---------------- HELPERS ----------------
 function idx(x, y) {
@@ -46,7 +42,6 @@ function resize() {
 
   grid = new Uint8Array(GRID_W * GRID_H);
   next = new Uint8Array(GRID_W * GRID_H);
-  waterDir = new Int8Array(GRID_W * GRID_H);
 
   seed();
 }
@@ -58,37 +53,20 @@ resize();
 function seed() {
   grid.fill(EMPTY);
 
-  // stone floor
-  for (let x = 0; x < GRID_W; x++) {
-    grid[idx(x, GRID_H - 1)] = STONE;
-  }
+  // simple sand pile in center
+  const cx = Math.floor(GRID_W / 2);
+  const cy = Math.floor(GRID_H / 4);
+  const r = 10;
 
-  // sand ball
-  const sx = Math.floor(GRID_W / 2);
-  const sy = Math.floor(GRID_H / 3);
-  const sr = 8;
+  for (let y = -r; y <= r; y++) {
+    for (let x = -r; x <= r; x++) {
+      if (x * x + y * y <= r * r) {
+        const gx = cx + x;
+        const gy = cy + y;
 
-  for (let y = -sr; y <= sr; y++) {
-    for (let x = -sr; x <= sr; x++) {
-      if (x * x + y * y <= sr * sr) {
-        const gx = sx + x;
-        const gy = sy + y;
-        if (inBounds(gx, gy)) grid[idx(gx, gy)] = SAND;
-      }
-    }
-  }
-
-  // water ball
-  const wx = Math.floor(GRID_W * 0.7);
-  const wy = Math.floor(GRID_H / 3);
-  const wr = 6;
-
-  for (let y = -wr; y <= wr; y++) {
-    for (let x = -wr; x <= wr; x++) {
-      if (x * x + y * y <= wr * wr) {
-        const gx = wx + x;
-        const gy = wy + y;
-        if (inBounds(gx, gy)) grid[idx(gx, gy)] = WATER;
+        if (inBounds(gx, gy)) {
+          grid[idx(gx, gy)] = SAND;
+        }
       }
     }
   }
@@ -98,89 +76,35 @@ function seed() {
 function step() {
   next.fill(EMPTY);
 
+  // bottom-up so sand settles correctly
   for (let y = GRID_H - 1; y >= 0; y--) {
     for (let x = 0; x < GRID_W; x++) {
 
       const i = idx(x, y);
-      const v = grid[i];
 
-      if (v === EMPTY) continue;
+      if (grid[i] !== SAND) continue;
 
-      // ---------------- STONE ----------------
-      if (v === STONE) {
-        next[i] = STONE;
+      // 1. fall down
+      if (isEmpty(x, y + 1)) {
+        next[idx(x, y + 1)] = SAND;
         continue;
       }
 
-      // ---------------- SAND ----------------
-      if (v === SAND) {
+      // 2. diagonal fall
+      const dir = randDir();
 
-        if (isEmpty(x, y + 1)) {
-          next[idx(x, y + 1)] = SAND;
-          continue;
-        }
-
-        const dir = randDir();
-
-        if (isEmpty(x + dir, y + 1)) {
-          next[idx(x + dir, y + 1)] = SAND;
-          continue;
-        }
-
-        if (isEmpty(x - dir, y + 1)) {
-          next[idx(x - dir, y + 1)] = SAND;
-          continue;
-        }
-
-        next[i] = SAND;
+      if (isEmpty(x + dir, y + 1)) {
+        next[idx(x + dir, y + 1)] = SAND;
         continue;
       }
 
-      // ---------------- WATER ----------------
-      if (v === WATER) {
-
-        const i2 = i;
-
-        // 1. down first
-        if (isEmpty(x, y + 1)) {
-          next[idx(x, y + 1)] = WATER;
-          waterDir[i2] = 0;
-          continue;
-        }
-
-        // 2. diagonal down
-        const d = randDir();
-
-        if (isEmpty(x + d, y + 1)) {
-          next[idx(x + d, y + 1)] = WATER;
-          waterDir[i2] = d;
-          continue;
-        }
-
-        // 3. initialize direction if needed
-        if (waterDir[i2] === 0) {
-          waterDir[i2] = randDir();
-        }
-
-        let dir = waterDir[i2];
-
-        // 4. move sideways (level finding)
-        if (isEmpty(x + dir, y)) {
-          next[idx(x + dir, y)] = WATER;
-          continue;
-        }
-
-        // 5. reverse if blocked
-        if (isEmpty(x - dir, y)) {
-          waterDir[i2] = -dir;
-          next[idx(x - dir, y)] = WATER;
-          continue;
-        }
-
-        // 6. stay
-        next[i] = WATER;
+      if (isEmpty(x - dir, y + 1)) {
+        next[idx(x - dir, y + 1)] = SAND;
         continue;
       }
+
+      // 3. stay
+      next[i] = SAND;
     }
   }
 
@@ -193,22 +117,18 @@ function step() {
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  ctx.fillStyle = "#d6c28a";
+
   for (let y = 0; y < GRID_H; y++) {
     for (let x = 0; x < GRID_W; x++) {
-
-      const v = grid[idx(x, y)];
-      if (v === EMPTY) continue;
-
-      if (v === SAND) ctx.fillStyle = "#d6c28a";
-      else if (v === WATER) ctx.fillStyle = "#4aa3ff";
-      else if (v === STONE) ctx.fillStyle = "#666666";
-
-      ctx.fillRect(
-        x * CELL_SIZE,
-        y * CELL_SIZE,
-        CELL_SIZE,
-        CELL_SIZE
-      );
+      if (grid[idx(x, y)] === SAND) {
+        ctx.fillRect(
+          x * CELL_SIZE,
+          y * CELL_SIZE,
+          CELL_SIZE,
+          CELL_SIZE
+        );
+      }
     }
   }
 }
