@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Emergent World</title>
-
+  <meta charset="utf-8" />
+  <title>Sand Sim</title>
   <style>
     html, body {
       margin: 0;
@@ -12,16 +10,13 @@
       overflow: hidden;
       background: black;
     }
-
     canvas {
       display: block;
-      image-rendering: pixelated;
     }
   </style>
 </head>
 <body>
-
-<script type="module" src="./src/main.js"></script>
-
+  <canvas id="c"></canvas>
+  <script src="sim.js"></script>
 </body>
 </html>
