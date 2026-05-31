@@ -66,31 +66,40 @@ export default class Simulation {
      * Just local equilibration of properties.
      */
 
-    exchange(a, b) {
+    exchange(a, b, ax, ay, bx, by) {
 
-        const rate = 0.25;
+    // introduce a VERY small implicit field:
+    // (this replaces gravity without direction)
 
-        // mass diffusion
-        const dm = a.mass - b.mass;
-        a.mass -= dm * rate;
-        b.mass += dm * rate;
+    const fieldBias =
+        (ay - by) * 0.02;
 
-        // energy diffusion
-        const de = a.energy - b.energy;
-        a.energy -= de * rate;
-        b.energy += de * rate;
+    const rate = 0.25;
 
-        // cohesion diffusion
-        const dc = a.cohesion - b.cohesion;
-        a.cohesion -= dc * rate;
-        b.cohesion += dc * rate;
+    // asymmetric coupling (key fix)
+    const influenceA = 1 + fieldBias;
+    const influenceB = 1 - fieldBias;
 
-        // conductivity diffusion
-        const dcond = a.conductivity - b.conductivity;
-        a.conductivity -= dcond * rate;
-        b.conductivity += dcond * rate;
-    }
+    // mass
+    const dm = a.mass - b.mass;
+    a.mass -= dm * rate * influenceA;
+    b.mass += dm * rate * influenceB;
 
+    // energy
+    const de = a.energy - b.energy;
+    a.energy -= de * rate * influenceA;
+    b.energy += de * rate * influenceB;
+
+    // cohesion
+    const dc = a.cohesion - b.cohesion;
+    a.cohesion -= dc * rate * influenceA;
+    b.cohesion += dc * rate * influenceB;
+
+    // conductivity
+    const d = a.conductivity - b.conductivity;
+    a.conductivity -= d * rate * influenceA;
+    b.conductivity += d * rate * influenceB;
+}
     /*
      * =========================================================
      * ENERGY DIFFUSION (kept separate but symmetric)
