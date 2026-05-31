@@ -144,39 +144,39 @@ function step() {
       // ---------------- WATER ----------------
       if (v === WATER) {
 
-        // 1. down
-        if (isEmpty(x, y + 1)) {
-          next[idx(x, y + 1)] = WATER;
-          continue;
-        }
-
-        // 2. sideways (randomized direction)
-        const dirs = Math.random() < 0.5 ? [-1, 1] : [1, -1];
-
-        for (let d of dirs) {
-          if (isEmpty(x + d, y)) {
-            next[idx(x + d, y)] = WATER;
-            continue;
-          }
-        }
-
-        // 3. diagonal down
-        const d2 = Math.random() < 0.5 ? -1 : 1;
-
-        if (isEmpty(x + d2, y + 1)) {
-          next[idx(x + d2, y + 1)] = WATER;
-        } else {
-          next[i] = WATER;
-        }
-
-        continue;
-      }
-    }
+  // 1. fall straight down
+  if (isEmpty(x, y + 1)) {
+    next[idx(x, y + 1)] = WATER;
+    continue;
   }
 
-  const tmp = grid;
-  grid = next;
-  next = tmp;
+  // 2. horizontal movement (like “flowing”)
+  const dir = Math.random() < 0.5 ? -1 : 1;
+
+  if (isEmpty(x + dir, y)) {
+    next[idx(x + dir, y)] = WATER;
+    continue;
+  }
+
+  if (isEmpty(x - dir, y)) {
+    next[idx(x - dir, y)] = WATER;
+    continue;
+  }
+
+  // 3. diagonal fallback
+  if (isEmpty(x + dir, y + 1)) {
+    next[idx(x + dir, y + 1)] = WATER;
+    continue;
+  }
+
+  if (isEmpty(x - dir, y + 1)) {
+    next[idx(x - dir, y + 1)] = WATER;
+    continue;
+  }
+
+  // 4. stay
+  next[i] = WATER;
+  continue;
 }
 
 // ---------------- DRAW ----------------
