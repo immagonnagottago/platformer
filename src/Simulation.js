@@ -1,13 +1,5 @@
 // src/Simulation.js
 
-import {
-    MOVE_DIRECTIONS,
-    GRAVITY_WEIGHT,
-    COHESION_WEIGHT,
-    THERMAL_WEIGHT,
-    ENERGY_DIFFUSION_RATE
-} from "./constants.js";
-
 export default class Simulation {
 
     constructor(world) {
@@ -16,98 +8,94 @@ export default class Simulation {
 
     step() {
 
-    this.world.beginTick();
+        this.world.beginTick();
 
-    const parity = this.world.tick % 2;
+        // checkerboard update = removes scan bias
+        const parity = this.world.tick % 2;
 
-    for (let y = this.world.height - 1; y >= 0; y--) {
+        for (let y = this.world.height - 1; y >= 0; y--) {
+            for (let x = 0; x < this.world.width; x++) {
 
-        for (let x = 0; x < this.world.width; x++) {
+                if ((x + y) % 2 !== parity) continue;
 
-            // 🔥 parity flip removes directional drift
-            if ((x + y) % 2 !== parity) continue;
+                const cell = this.world.get(x, y);
 
-            const cell = this.world.get(x, y);
+                if (!cell) continue;
+                if (this.world.wasUpdatedThisTick(cell)) continue;
 
-            if (!cell) continue;
-            if (this.world.wasUpdatedThisTick(cell)) continue;
-
-            this.updateCell(x, y, cell);
-            this.world.markUpdated(cell);
-        }
-    }
-
-    this.diffuseEnergy();
-}
-    updateCell(x, y, cell) {
-
-        let bestScore = -Infinity;
-        let bestMoves = [];
-
-        // shuffle directions to remove directional bias
-        const dirs = MOVE_DIRECTIONS.slice();
-        this.shuffle(dirs);
-
-        for (const [dx, dy] of dirs) {
-
-            const nx = x + dx;
-            const ny = y + dy;
-
-            if (!this.world.inBounds(nx, ny)) continue;
-
-            const target = this.world.get(nx, ny);
-
-            // only allow empty space movement for now
-            if (target !== null) continue;
-
-            const score = this.scoreMove(x, y, nx, ny, cell);
-
-            if (
-                score > bestScore + 1e-9
-            ) {
-                bestScore = score;
-                bestMoves = [{ x: nx, y: ny }];
-            } else if (Math.abs(score - bestScore) < 1e-9) {
-                bestMoves.push({ x: nx, y: ny });
+                this.updateCell(x, y, cell);
+                this.world.markUpdated(cell);
             }
         }
 
-        if (bestMoves.length === 0) return;
-
-        const move =
-            bestMoves[
-                (Math.random() * bestMoves.length) | 0
-            ];
-
-        this.world.move(x, y, move.x, move.y);
+        this.diffuseEnergy();
     }
 
-    scoreMove(x, y, nx, ny, cell) {
+    /*
+     * =========================================================
+     * SYMMETRIC LOCAL EXCHANGE (NO DIRECTIONAL "MOVEMENT")
+     * =========================================================
+     */
 
-        let score = 0;
+    updateCell(x, y, cell) {
 
-        const dy = ny - y;
+        // pick ONE random neighbor pair (no evaluation, no scoring)
+        const dx = (Math.random() * 3 | 0) - 1;
+        const dy = (Math.random() * 3 | 0) - 1;
 
-        score += dy * cell.mass * GRAVITY_WEIGHT;
+        if (dx === 0 && dy === 0) return;
 
-        const neighbors =
-            this.world.getOccupiedNeighbors(nx, ny);
+        const nx = x + dx;
+        const ny = y + dy;
 
-        let cohesion = 0;
+        if (!this.world.inBounds(nx, ny)) return;
 
-        for (const n of neighbors) {
-            cohesion += cell.cohesion * n.cell.cohesion;
-        }
+        const other = this.world.get(nx, ny);
 
-        score += cohesion * COHESION_WEIGHT;
+        if (!other) return;
 
-        score +=
-            (Math.random() - 0.5)
-            * cell.energy
-            * THERMAL_WEIGHT;
-
-        return score;
+        this.exchange(cell, other);
     }
+
+    /*
+     * =========================================================
+     * FIELD RELAXATION (CORE PHYSICS OPERATOR)
+     * =========================================================
+     *
+     * No movement. No direction. No gravity.
+     * Just local equilibration of properties.
+     */
+
+    exchange(a, b) {
+
+        const rate = 0.25;
+
+        // mass diffusion
+        const dm = a.mass - b.mass;
+        a.mass -= dm * rate;
+        b.mass += dm * rate;
+
+        // energy diffusion
+        const de = a.energy - b.energy;
+        a.energy -= de * rate;
+        b.energy += de * rate;
+
+        // cohesion diffusion
+        const dc = a.cohesion - b.cohesion;
+        a.cohesion -= dc * rate;
+        b.cohesion += dc * rate;
+
+        // conductivity diffusion
+        const dcond = a.conductivity - b.conductivity;
+        a.conductivity -= dcond * rate;
+        b.conductivity += dcond * rate;
+    }
+
+    /*
+     * =========================================================
+     * ENERGY DIFFUSION (kept separate but symmetric)
+     * =========================================================
+     */
 
     diffuseEnergy() {
 
@@ -121,8 +109,7 @@ export default class Simulation {
             for (const n of neighbors) {
 
                 const delta =
-                    (cell.energy - n.cell.energy)
-                    * ENERGY_DIFFUSION_RATE;
+                    (cell.energy - n.cell.energy) * 0.05;
 
                 if (Math.abs(delta) < 0.01) continue;
 
@@ -137,13 +124,6 @@ export default class Simulation {
         for (const t of transfers) {
             t.a.energy -= t.amount;
             t.b.energy += t.amount;
-        }
-    }
-
-    shuffle(arr) {
-        for (let i = arr.length - 1; i > 0; i--) {
-            const j = (Math.random() * (i + 1)) | 0;
-            [arr[i], arr[j]] = [arr[j], arr[i]];
         }
     }
 }
