@@ -2,46 +2,92 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Platformer Base</title>
+    <title>Simple Platformer</title>
     <style>
-        /* Reset margins to ensure true full-screen */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* Prevents scrollbars */
-            background-color: #000;
-        }
-
-        #game-container {
-            width: 100vw;
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-
-        #bg-image {
-            width: 100%;
-            height: 100%;
-            /* 'cover' ensures the image fills the area 
-               without stretching or distortion */
-            object-fit: cover; 
-            display: block;
-        }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #333; }
+        canvas { border: 4px solid #fff; background-color: #f0f0f0; }
     </style>
 </head>
 <body>
 
-    <div id="game-container">
-        <img id="bg-image" src="game-background.png" alt="Game Background">
-    </div>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
 
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Game Constants
+    const GRAVITY = 0.8;
+    const JUMP_FORCE = -15;
+    const SPEED = 5;
+
+    // Player Object
+    const player = {
+        x: 100,
+        y: 100,
+        width: 40,
+        height: 40,
+        velX: 0,
+        velY: 0,
+        jumping: false,
+        color: '#3498db'
+    };
+
+    const keys = {};
+
+    // Input Listeners
+    window.addEventListener('keydown', (e) => keys[e.code] = true);
+    window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+    function update() {
+        // Movement
+        if (keys['ArrowLeft']) player.velX = -SPEED;
+        else if (keys['ArrowRight']) player.velX = SPEED;
+        else player.velX = 0;
+
+        // Jump
+        if (keys['Space'] && !player.jumping) {
+            player.velY = JUMP_FORCE;
+            player.jumping = true;
+        }
+
+        // Apply Physics
+        player.velY += GRAVITY;
+        player.x += player.velX;
+        player.y += player.velY;
+
+        // Floor Collision
+        if (player.y + player.height > canvas.height - 50) {
+            player.y = canvas.height - 50 - player.height;
+            player.velY = 0;
+            player.jumping = false;
+        }
+
+        // Screen Boundaries
+        if (player.x < 0) player.x = 0;
+        if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+    }
+
+    function draw() {
+        // Clear screen
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Floor
+        ctx.fillStyle = '#2ecc71';
+        ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+
+        // Draw Player
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    loop();
+</script>
 </body>
 </html>
