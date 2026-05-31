@@ -39,12 +39,15 @@ function randDir() {
 // safe write (prevents overwrites = prevents “disappearing pixels”)
 function setNext(x, y, v) {
   if (!inBounds(x, y)) return false;
+
   const i = idx(x, y);
+
+  // IMPORTANT: do NOT allow overwrite
   if (next[i] !== EMPTY) return false;
+
   next[i] = v;
   return true;
 }
-
 // ---------------- RESIZE ----------------
 function resize() {
   canvas.width = window.innerWidth;
@@ -148,50 +151,48 @@ function step() {
       // ---------------- WATER ----------------
       if (v === WATER) {
 
-        const i2 = idx(x, y);
+  const i = idx(x, y);
 
-        // 1. gravity
-        if (isEmpty(x, y + 1)) {
-          setNext(x, y + 1, WATER);
-          waterDir[i2] = 0;
-          continue;
-        }
-
-        // 2. diagonal fall
-        const dir = randDir();
-
-        if (isEmpty(x + dir, y + 1)) {
-          setNext(x + dir, y + 1, WATER);
-          waterDir[i2] = dir;
-          continue;
-        }
-
-        // 3. keep or choose direction
-        if (waterDir[i2] === 0) {
-          waterDir[i2] = randDir();
-        }
-
-        let d = waterDir[i2];
-
-        // 4. horizontal flow (find level behavior)
-        if (isEmpty(x + d, y)) {
-          setNext(x + d, y, WATER);
-          continue;
-        }
-
-        // 5. reverse if blocked
-        if (isEmpty(x - d, y)) {
-          waterDir[i2] = -d;
-          setNext(x - d, y, WATER);
-          continue;
-        }
-
-        // 6. fallback
-        setNext(x, y, WATER);
-        continue;
-      }
-    }
+  // ---------------- 1. DOWN ----------------
+  if (isEmpty(x, y + 1)) {
+    setNext(x, y + 1, WATER);
+    waterDir[i] = 0;
+    continue;
   }
+
+  // ---------------- 2. DIAGONAL DOWN ----------------
+  const d = Math.random() < 0.5 ? -1 : 1;
+
+  if (isEmpty(x + d, y + 1)) {
+    setNext(x + d, y + 1, WATER);
+    waterDir[i] = d;
+    continue;
+  }
+
+  // ---------------- 3. SIDEWAYS INIT ----------------
+  if (waterDir[i] === 0) {
+    waterDir[i] = Math.random() < 0.5 ? -1 : 1;
+  }
+
+  let dir = waterDir[i];
+
+  // ---------------- 4. CONTINUE SIDEWAYS ----------------
+  if (isEmpty(x + dir, y)) {
+    setNext(x + dir, y, WATER);
+    continue;
+  }
+
+  // ---------------- 5. BLOCKED → FLIP ----------------
+  if (isEmpty(x - dir, y)) {
+    waterDir[i] = -dir;
+    setNext(x - dir, y, WATER);
+    continue;
+  }
+
+  // ---------------- 6. STAY ----------------
+  setNext(x, y, WATER);
+  continue;
+}
 
   const tmp = grid;
   grid = next;
