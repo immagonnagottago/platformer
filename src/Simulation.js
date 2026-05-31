@@ -16,24 +16,29 @@ export default class Simulation {
 
     step() {
 
-        this.world.beginTick();
+    this.world.beginTick();
 
-        for (let y = this.world.height - 1; y >= 0; y--) {
-            for (let x = 0; x < this.world.width; x++) {
+    const parity = this.world.tick % 2;
 
-                const cell = this.world.get(x, y);
+    for (let y = this.world.height - 1; y >= 0; y--) {
 
-                if (!cell) continue;
-                if (this.world.wasUpdatedThisTick(cell)) continue;
+        for (let x = 0; x < this.world.width; x++) {
 
-                this.updateCell(x, y, cell);
-                this.world.markUpdated(cell);
-            }
+            // 🔥 parity flip removes directional drift
+            if ((x + y) % 2 !== parity) continue;
+
+            const cell = this.world.get(x, y);
+
+            if (!cell) continue;
+            if (this.world.wasUpdatedThisTick(cell)) continue;
+
+            this.updateCell(x, y, cell);
+            this.world.markUpdated(cell);
         }
-
-        this.diffuseEnergy();
     }
 
+    this.diffuseEnergy();
+}
     updateCell(x, y, cell) {
 
         let bestScore = -Infinity;
