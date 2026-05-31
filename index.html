@@ -2,79 +2,90 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Simple Platformer</title>
+    <title>Pixel Platformer</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #333; }
-        canvas { border: 4px solid #fff; background-color: #f0f0f0; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #1a1a1a; }
+        canvas { image-rendering: pixelated; border: 4px solid #333; background-color: #000; }
     </style>
 </head>
 <body>
 
-<canvas id="gameCanvas" width="800" height="600"></canvas>
+<canvas id="gameCanvas" width="320" height="240"></canvas>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    
+    // Pixel scale settings
+    const CELL_SIZE = 8;
+    const COLS = 40;
+    const ROWS = 30;
+    
+    // World Grid (0: empty, 1: dirt)
+    const grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
 
-    // Game Constants
-    const GRAVITY = 0.8;
-    const JUMP_FORCE = -15;
-    const SPEED = 5;
+    // Create a floor
+    for (let x = 0; x < COLS; x++) grid[ROWS - 1][x] = 1;
+    // Add some random blocks
+    for (let i = 0; i < 20; i++) {
+        grid[Math.floor(Math.random() * ROWS)][Math.floor(Math.random() * COLS)] = 1;
+    }
 
-    // Player Object
     const player = {
-        x: 100,
-        y: 100,
-        width: 40,
-        height: 40,
-        velX: 0,
-        velY: 0,
+        x: 16, y: 16,
+        width: 6, height: 6,
+        vx: 0, vy: 0,
         jumping: false,
-        color: '#3498db'
+        color: '#ff3e3e'
     };
 
     const keys = {};
-
-    // Input Listeners
     window.addEventListener('keydown', (e) => keys[e.code] = true);
     window.addEventListener('keyup', (e) => keys[e.code] = false);
 
     function update() {
-        // Movement
-        if (keys['ArrowLeft']) player.velX = -SPEED;
-        else if (keys['ArrowRight']) player.velX = SPEED;
-        else player.velX = 0;
+        // Horizontal
+        if (keys['ArrowLeft']) player.vx = -1.5;
+        else if (keys['ArrowRight']) player.vx = 1.5;
+        else player.vx = 0;
 
-        // Jump - Now using 'KeyZ'
+        // Jump (Z)
         if (keys['KeyZ'] && !player.jumping) {
-            player.velY = JUMP_FORCE;
+            player.vy = -4;
             player.jumping = true;
         }
 
-        // Apply Physics
-        player.velY += GRAVITY;
-        player.x += player.velX;
-        player.y += player.velY;
+        // Gravity
+        player.vy += 0.2;
+        
+        // Simple Physics Step
+        player.x += player.vx;
+        player.y += player.vy;
 
-        // Floor Collision
-        if (player.y + player.height > canvas.height - 50) {
-            player.y = canvas.height - 50 - player.height;
-            player.velY = 0;
+        // Basic Collision with Grid
+        let gridX = Math.floor(player.x / CELL_SIZE);
+        let gridY = Math.floor(player.y / CELL_SIZE);
+
+        if (player.y + player.height > ROWS * CELL_SIZE) {
+            player.y = (ROWS * CELL_SIZE) - player.height;
+            player.vy = 0;
             player.jumping = false;
         }
-
-        // Screen Boundaries
-        if (player.x < 0) player.x = 0;
-        if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
     }
 
     function draw() {
-        // Clear screen
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Floor
-        ctx.fillStyle = '#2ecc71';
-        ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
+        // Draw Grid
+        for (let y = 0; y < ROWS; y++) {
+            for (let x = 0; x < COLS; x++) {
+                if (grid[y][x] === 1) {
+                    ctx.fillStyle = '#8b4513'; // Dirt color
+                    ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                }
+            }
+        }
 
         // Draw Player
         ctx.fillStyle = player.color;
