@@ -1,48 +1,62 @@
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
-// ---------- GRID ----------
-let GRID_W = 200;
-let GRID_H = 120;
+ctx.imageSmoothingEnabled = false;
 
-let grid = new Uint8Array(GRID_W * GRID_H);
-let next = new Uint8Array(GRID_W * GRID_H);
+// ---------- CONFIG ----------
+const CELL_SIZE = 4;
+
+let GRID_W = 0;
+let GRID_H = 0;
+
+let grid;
+let next;
 
 const EMPTY = 0;
 const SAND = 1;
-
-// ---------- RESIZE ----------
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener("resize", resize);
-resize();
 
 // ---------- HELPERS ----------
 function idx(x, y) {
   return x + y * GRID_W;
 }
 
-// out-of-bounds = SOLID
+// out of bounds = solid (NOT air)
 function isAir(x, y) {
   if (x < 0 || x >= GRID_W || y < 0 || y >= GRID_H) return false;
   return grid[idx(x, y)] === EMPTY;
 }
 
+// ---------- RESIZE ----------
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  GRID_W = Math.floor(canvas.width / CELL_SIZE);
+  GRID_H = Math.floor(canvas.height / CELL_SIZE);
+
+  grid = new Uint8Array(GRID_W * GRID_H);
+  next = new Uint8Array(GRID_W * GRID_H);
+
+  seed();
+}
+
+window.addEventListener("resize", resize);
+resize();
+
 // ---------- INIT ----------
 function seed() {
+  grid.fill(EMPTY);
+
+  // simple top layer of sand
   for (let x = 0; x < GRID_W; x++) {
-    grid[idx(x, 0)] = SAND; // top line of sand
+    grid[idx(x, 0)] = SAND;
   }
 }
-seed();
 
 // ---------- STEP ----------
 function step() {
   next.fill(EMPTY);
 
-  // bottom-up prevents overwriting issues
   for (let y = GRID_H - 1; y >= 0; y--) {
     for (let x = 0; x < GRID_W; x++) {
 
@@ -50,12 +64,13 @@ function step() {
 
       if (grid[i] !== SAND) continue;
 
-      // try move down
+      // 1. fall straight down
       if (isAir(x, y + 1)) {
         next[idx(x, y + 1)] = SAND;
         continue;
       }
 
+      // 2. check diagonals
       const left = isAir(x - 1, y + 1);
       const right = isAir(x + 1, y + 1);
 
@@ -67,11 +82,13 @@ function step() {
       } else if (right) {
         next[idx(x + 1, y + 1)] = SAND;
       } else {
+        // stay in place
         next[i] = SAND;
       }
     }
   }
 
+  // swap buffers
   const tmp = grid;
   grid = next;
   next = tmp;
@@ -79,23 +96,21 @@ function step() {
 
 // ---------- DRAW ----------
 function draw() {
-  const cellW = canvas.width / GRID_W;
-  const cellH = canvas.height / GRID_H;
-
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   ctx.fillStyle = "#d6c28a";
 
   for (let y = 0; y < GRID_H; y++) {
     for (let x = 0; x < GRID_W; x++) {
-      if (grid[idx(x, y)] === SAND) {
-        ctx.fillRect(
-          x * cellW,
-          y * cellH,
-          cellW + 1,
-          cellH + 1
-        );
-      }
+
+      if (grid[idx(x, y)] !== SAND) continue;
+
+      ctx.fillRect(
+        x * CELL_SIZE,
+        y * CELL_SIZE,
+        CELL_SIZE,
+        CELL_SIZE
+      );
     }
   }
 }
