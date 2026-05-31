@@ -1,473 +1,361 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Cellular Automata Playground</title>
-  <style>
-    :root {
-      --bg: #0f172a;
-      --panel: #111827;
-      --panel-2: #1f2937;
-      --text: #e5e7eb;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --accent-2: #818cf8;
-      --grid: rgba(255,255,255,0.05);
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sandbox Base</title>
 
-    * {
-      box-sizing: border-box;
-    }
+<style>
+  html, body {
+    margin: 0;
+    overflow: hidden;
+    background: black;
+    font-family: Arial, sans-serif;
+  }
 
-    body {
-      margin: 0;
-      background: radial-gradient(circle at top, #1e293b, var(--bg));
-      color: var(--text);
-      font-family: Inter, system-ui, sans-serif;
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      min-height: 100vh;
-      overflow: hidden;
-    }
+  canvas {
+    display: block;
+    image-rendering: pixelated;
+    cursor: none;
+  }
 
-    .sidebar {
-      background: rgba(17, 24, 39, 0.9);
-      border-right: 1px solid rgba(255,255,255,0.08);
-      padding: 24px;
-      overflow-y: auto;
-      backdrop-filter: blur(16px);
-    }
+  .ui {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    display: flex;
+    gap: 8px;
+    z-index: 10;
+  }
 
-    h1 {
-      margin-top: 0;
-      font-size: 1.7rem;
-      line-height: 1.1;
-    }
+  button {
+    background: #1e1e1e;
+    color: white;
+    border: 1px solid #555;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 14px;
+  }
 
-    .sub {
-      color: var(--muted);
-      margin-bottom: 24px;
-      line-height: 1.5;
-    }
+  button:hover {
+    background: #333;
+  }
 
-    .section {
-      margin-bottom: 24px;
-      padding: 16px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 16px;
-    }
-
-    .section h2 {
-      margin: 0 0 12px;
-      font-size: 1rem;
-    }
-
-    .controls {
-      display: grid;
-      gap: 12px;
-    }
-
-    label {
-      display: grid;
-      gap: 6px;
-      font-size: 0.92rem;
-      color: var(--muted);
-    }
-
-    input,
-    button,
-    select {
-      border: none;
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-size: 0.95rem;
-    }
-
-    input,
-    select {
-      background: var(--panel-2);
-      color: var(--text);
-      border: 1px solid rgba(255,255,255,0.08);
-    }
-
-    button {
-      cursor: pointer;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      color: white;
-      font-weight: 600;
-      transition: transform 0.15s ease, opacity 0.15s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-      opacity: 0.95;
-    }
-
-    button.secondary {
-      background: #334155;
-    }
-
-    .button-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .stats {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .stat {
-      background: rgba(255,255,255,0.04);
-      border-radius: 14px;
-      padding: 12px;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-
-    .stat .value {
-      font-size: 1.3rem;
-      font-weight: 700;
-    }
-
-    .canvas-wrap {
-      display: grid;
-      place-items: center;
-      padding: 20px;
-    }
-
-    canvas {
-      background: black;
-      border-radius: 18px;
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,0.08),
-        0 20px 50px rgba(0,0,0,0.45);
-      image-rendering: pixelated;
-      max-width: 100%;
-      max-height: 100%;
-    }
-
-    .hint {
-      font-size: 0.82rem;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
-    code {
-      background: rgba(255,255,255,0.06);
-      padding: 2px 6px;
-      border-radius: 6px;
-    }
-  </style>
+  button.active {
+    background: white;
+    color: black;
+  }
+</style>
 </head>
 <body>
-  <aside class="sidebar">
-    <h1>Cellular Automata Playground</h1>
-    <div class="sub">
-      Tweak rules, paint cells, randomize states, and experiment with emergent behavior.
-    </div>
 
-    <div class="section">
-      <h2>Rules</h2>
-      <div class="controls">
-        <label>
-          Birth Rule (B)
-          <input id="birthRule" value="3" />
-        </label>
+<div class="ui">
+  <button id="wallBtn" class="active">Wall</button>
+  <button id="eraseBtn">Erase</button>
+  <button id="clearBtn">Clear</button>
+</div>
 
-        <label>
-          Survival Rule (S)
-          <input id="survivalRule" value="23" />
-        </label>
+<canvas id="canvas"></canvas>
 
-        <label>
-          Presets
-          <select id="presetSelect">
-            <option value="23|3">Conway's Life (B3/S23)</option>
-            <option value="12345|3">Maze</option>
-            <option value="1357|1357">Replicator</option>
-            <option value="245|368">2x2</option>
-            <option value="34|34">34 Life</option>
-            <option value="">Custom</option>
-          </select>
-        </label>
-      </div>
-    </div>
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-    <div class="section">
-      <h2>Simulation</h2>
-      <div class="controls">
-        <label>
-          Speed
-          <input type="range" min="1" max="60" value="15" id="speedSlider" />
-        </label>
+const CELL_SIZE = 4;
 
-        <label>
-          Cell Size
-          <input type="range" min="4" max="20" value="8" id="cellSizeSlider" />
-        </label>
+let cols;
+let rows;
+let grid;
 
-        <div class="button-row">
-          <button id="playBtn">Play</button>
-          <button id="stepBtn" class="secondary">Step</button>
-        </div>
+const EMPTY = 0;
+const WALL = 1;
 
-        <div class="button-row">
-          <button id="randomBtn">Randomize</button>
-          <button id="clearBtn" class="secondary">Clear</button>
-        </div>
-      </div>
-    </div>
+const COLORS = {
+  [EMPTY]: "#000000",
+  [WALL]: "#ffffff"
+};
 
-    <div class="section">
-      <h2>Stats</h2>
-      <div class="stats">
-        <div class="stat">
-          <div class="value" id="generationStat">0</div>
-          <div>Generation</div>
-        </div>
+let mouseDown = false;
+let mouseCellX = 0;
+let mouseCellY = 0;
 
-        <div class="stat">
-          <div class="value" id="aliveStat">0</div>
-          <div>Alive Cells</div>
-        </div>
-      </div>
-    </div>
+let brushSize = 5;
 
-    <div class="section">
-      <h2>Ideas to Try</h2>
-      <div class="hint">
-        • Make the grid wrap around the edges.<br>
-        • Add multiple cell states/colors.<br>
-        • Inject noise every N frames.<br>
-        • Support rule strings like <code>B36/S23</code>.<br>
-        • Add GPU rendering with WebGL.
-      </div>
-    </div>
-  </aside>
+let currentTool = WALL;
 
-  <main class="canvas-wrap">
-    <canvas id="canvas"></canvas>
-  </main>
+/*
+============================
+GRID
+============================
+*/
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+function createGrid() {
+  return Array.from({ length: rows }, () =>
+    Array(cols).fill(EMPTY)
+  );
+}
 
-    const birthRuleInput = document.getElementById('birthRule');
-    const survivalRuleInput = document.getElementById('survivalRule');
-    const presetSelect = document.getElementById('presetSelect');
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 
-    const playBtn = document.getElementById('playBtn');
-    const stepBtn = document.getElementById('stepBtn');
-    const randomBtn = document.getElementById('randomBtn');
-    const clearBtn = document.getElementById('clearBtn');
+  cols = Math.floor(canvas.width / CELL_SIZE);
+  rows = Math.floor(canvas.height / CELL_SIZE);
 
-    const speedSlider = document.getElementById('speedSlider');
-    const cellSizeSlider = document.getElementById('cellSizeSlider');
+  grid = createGrid();
+}
 
-    const generationStat = document.getElementById('generationStat');
-    const aliveStat = document.getElementById('aliveStat');
+window.addEventListener("resize", resize);
+resize();
 
-    let cellSize = Number(cellSizeSlider.value);
-    let cols;
-    let rows;
-    let grid = [];
-    let running = false;
-    let generation = 0;
+/*
+============================
+HELPERS
+============================
+*/
 
-    function resizeCanvas() {
-      const maxWidth = window.innerWidth - 360;
-      const maxHeight = window.innerHeight - 40;
+function inBounds(x, y) {
+  return (
+    x >= 0 &&
+    x < cols &&
+    y >= 0 &&
+    y < rows
+  );
+}
 
-      canvas.width = Math.floor(maxWidth / cellSize) * cellSize;
-      canvas.height = Math.floor(maxHeight / cellSize) * cellSize;
+function setCell(x, y, type) {
+  if (!inBounds(x, y)) return;
+  grid[y][x] = type;
+}
 
-      cols = Math.floor(canvas.width / cellSize);
-      rows = Math.floor(canvas.height / cellSize);
+/*
+============================
+PAINT
+============================
+*/
 
-      createGrid();
-      draw();
-    }
+function paint() {
+  const half = Math.floor(brushSize / 2);
 
-    function createGrid(random = false) {
-      grid = Array.from({ length: rows }, () =>
-        Array.from({ length: cols }, () =>
-          random ? (Math.random() > 0.78 ? 1 : 0) : 0
-        )
+  for (let dy = -half; dy <= half; dy++) {
+    for (let dx = -half; dx <= half; dx++) {
+
+      setCell(
+        mouseCellX + dx,
+        mouseCellY + dy,
+        currentTool
       );
 
-      generation = 0;
-      updateStats();
     }
+  }
+}
 
-    function parseRule(text) {
-      return new Set(
-        text
-          .split('')
-          .map(n => Number(n))
-          .filter(n => !Number.isNaN(n) && n >= 0 && n <= 8)
+/*
+============================
+UPDATE
+============================
+*/
+
+function update() {
+  if (mouseDown) {
+    paint();
+  }
+}
+
+/*
+============================
+DRAW
+============================
+*/
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw cells
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+
+      const cell = grid[y][x];
+
+      if (cell !== EMPTY) {
+
+        ctx.fillStyle = COLORS[cell];
+
+        ctx.fillRect(
+          x * CELL_SIZE,
+          y * CELL_SIZE,
+          CELL_SIZE,
+          CELL_SIZE
+        );
+      }
+    }
+  }
+
+  drawBrushPreview();
+}
+
+/*
+============================
+CURSOR PREVIEW
+============================
+*/
+
+function drawBrushPreview() {
+  const half = Math.floor(brushSize / 2);
+
+  if (currentTool === WALL) {
+    ctx.fillStyle = "rgba(255,255,255,0.25)";
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
+  } else {
+    ctx.fillStyle = "rgba(255,0,0,0.25)";
+    ctx.strokeStyle = "rgba(255,0,0,0.9)";
+  }
+
+  ctx.lineWidth = 1;
+
+  for (let dy = -half; dy <= half; dy++) {
+    for (let dx = -half; dx <= half; dx++) {
+
+      const x = mouseCellX + dx;
+      const y = mouseCellY + dy;
+
+      if (!inBounds(x, y)) continue;
+
+      ctx.fillRect(
+        x * CELL_SIZE,
+        y * CELL_SIZE,
+        CELL_SIZE,
+        CELL_SIZE
       );
     }
+  }
 
-    function countNeighbors(x, y) {
-      let total = 0;
+  const sizePixels = brushSize * CELL_SIZE;
 
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (dx === 0 && dy === 0) continue;
+  const startX =
+    (mouseCellX - half) * CELL_SIZE;
 
-          const nx = x + dx;
-          const ny = y + dy;
+  const startY =
+    (mouseCellY - half) * CELL_SIZE;
 
-          if (nx < 0 || ny < 0 || nx >= cols || ny >= rows) {
-            continue;
-          }
+  ctx.strokeRect(
+    startX,
+    startY,
+    sizePixels,
+    sizePixels
+  );
+}
 
-          total += grid[ny][nx];
-        }
-      }
+/*
+============================
+MAIN LOOP
+============================
+*/
 
-      return total;
-    }
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
 
-    function step() {
-      const birth = parseRule(birthRuleInput.value);
-      const survive = parseRule(survivalRuleInput.value);
+loop();
 
-      const next = grid.map(row => [...row]);
+/*
+============================
+MOUSE
+============================
+*/
 
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const alive = grid[y][x] === 1;
-          const neighbors = countNeighbors(x, y);
+function updateMouse(e) {
+  const rect = canvas.getBoundingClientRect();
 
-          if (alive) {
-            next[y][x] = survive.has(neighbors) ? 1 : 0;
-          } else {
-            next[y][x] = birth.has(neighbors) ? 1 : 0;
-          }
-        }
-      }
+  mouseCellX = Math.floor(
+    (e.clientX - rect.left) / CELL_SIZE
+  );
 
-      grid = next;
-      generation++;
-      updateStats();
-      draw();
-    }
+  mouseCellY = Math.floor(
+    (e.clientY - rect.top) / CELL_SIZE
+  );
+}
 
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+canvas.addEventListener("mousemove", (e) => {
+  updateMouse(e);
+});
 
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+canvas.addEventListener("mousedown", (e) => {
+  mouseDown = true;
+  updateMouse(e);
+  paint();
+});
 
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const alive = grid[y][x];
+window.addEventListener("mouseup", () => {
+  mouseDown = false;
+});
 
-          if (alive) {
-            const gradient = ctx.createLinearGradient(
-              x * cellSize,
-              y * cellSize,
-              (x + 1) * cellSize,
-              (y + 1) * cellSize
-            );
+/*
+============================
+BRUSH SIZE
+============================
+*/
 
-            gradient.addColorStop(0, '#38bdf8');
-            gradient.addColorStop(1, '#818cf8');
+window.addEventListener("wheel", (e) => {
+  e.preventDefault();
 
-            ctx.fillStyle = gradient;
-            ctx.fillRect(
-              x * cellSize,
-              y * cellSize,
-              cellSize,
-              cellSize
-            );
-          }
+  if (e.deltaY > 0) {
+    brushSize -= 2;
+  } else {
+    brushSize += 2;
+  }
 
-          ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-          ctx.strokeRect(
-            x * cellSize,
-            y * cellSize,
-            cellSize,
-            cellSize
-          );
-        }
-      }
-    }
+  brushSize = Math.max(1, brushSize);
 
-    function updateStats() {
-      generationStat.textContent = generation;
+}, { passive: false });
 
-      const alive = grid.flat().reduce((sum, cell) => sum + cell, 0);
-      aliveStat.textContent = alive;
-    }
+/*
+============================
+BUTTONS
+============================
+*/
 
-    function animationLoop() {
-      if (running) {
-        step();
-      }
+const wallBtn = document.getElementById("wallBtn");
+const eraseBtn = document.getElementById("eraseBtn");
+const clearBtn = document.getElementById("clearBtn");
 
-      setTimeout(() => {
-        requestAnimationFrame(animationLoop);
-      }, 1000 / Number(speedSlider.value));
-    }
+function setActiveButton(button) {
+  wallBtn.classList.remove("active");
+  eraseBtn.classList.remove("active");
 
-    canvas.addEventListener('pointerdown', event => {
-      const rect = canvas.getBoundingClientRect();
+  button.classList.add("active");
+}
 
-      const x = Math.floor((event.clientX - rect.left) / cellSize);
-      const y = Math.floor((event.clientY - rect.top) / cellSize);
+wallBtn.addEventListener("click", () => {
+  currentTool = WALL;
+  setActiveButton(wallBtn);
+});
 
-      if (x >= 0 && y >= 0 && x < cols && y < rows) {
-        grid[y][x] = grid[y][x] ? 0 : 1;
-        draw();
-        updateStats();
-      }
-    });
+eraseBtn.addEventListener("click", () => {
+  currentTool = EMPTY;
+  setActiveButton(eraseBtn);
+});
 
-    playBtn.addEventListener('click', () => {
-      running = !running;
-      playBtn.textContent = running ? 'Pause' : 'Play';
-    });
+clearBtn.addEventListener("click", () => {
+  grid = createGrid();
+});
 
-    stepBtn.addEventListener('click', () => {
-      step();
-    });
+/*
+============================
+KEYS
+============================
+*/
 
-    randomBtn.addEventListener('click', () => {
-      createGrid(true);
-      draw();
-    });
+window.addEventListener("keydown", (e) => {
 
-    clearBtn.addEventListener('click', () => {
-      createGrid(false);
-      draw();
-    });
+  if (e.key.toLowerCase() === "c") {
+    grid = createGrid();
+  }
 
-    cellSizeSlider.addEventListener('input', () => {
-      cellSize = Number(cellSizeSlider.value);
-      resizeCanvas();
-    });
+});
+</script>
 
-    presetSelect.addEventListener('change', () => {
-      const value = presetSelect.value;
-      if (!value) return;
-
-      const [survive, birth] = value.split('|');
-
-      survivalRuleInput.value = survive;
-      birthRuleInput.value = birth;
-    });
-
-    window.addEventListener('resize', resizeCanvas);
-
-    resizeCanvas();
-    animationLoop();
-  </script>
 </body>
 </html>
