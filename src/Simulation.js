@@ -68,35 +68,39 @@ export default class Simulation {
 
     exchange(a, b, ax, ay, bx, by) {
 
-    // introduce a VERY small implicit field:
-    // (this replaces gravity without direction)
-
-    const fieldBias =
-        (ay - by) * 0.02;
-
     const rate = 0.25;
 
-    // asymmetric coupling (key fix)
-    const influenceA = 1 + fieldBias;
-    const influenceB = 1 - fieldBias;
+    // spatial bias stays extremely small
+    const bias = (ay - by) * 0.01;
 
-    // mass
+    // inertia prevents collapse (THIS IS KEY)
+    const inertiaA = 1 + a.energy * 0.005;
+    const inertiaB = 1 + b.energy * 0.005;
+
+    const influenceA = (1 + bias) / inertiaA;
+    const influenceB = (1 - bias) / inertiaB;
+
+    // mass (now resistant to flattening)
     const dm = a.mass - b.mass;
+
     a.mass -= dm * rate * influenceA;
     b.mass += dm * rate * influenceB;
 
-    // energy
+    // energy (slightly self-stabilizing)
     const de = a.energy - b.energy;
+
     a.energy -= de * rate * influenceA;
     b.energy += de * rate * influenceB;
 
-    // cohesion
+    // cohesion (this is what creates “structure memory”)
     const dc = a.cohesion - b.cohesion;
+
     a.cohesion -= dc * rate * influenceA;
     b.cohesion += dc * rate * influenceB;
 
     // conductivity
     const d = a.conductivity - b.conductivity;
+
     a.conductivity -= d * rate * influenceA;
     b.conductivity += d * rate * influenceB;
 }
