@@ -30,6 +30,10 @@ function isEmpty(x, y) {
   return inBounds(x, y) && grid[idx(x, y)] === EMPTY;
 }
 
+function randDir() {
+  return Math.random() < 0.5 ? -1 : 1;
+}
+
 // ---------------- RESIZE ----------------
 function resize() {
   canvas.width = window.innerWidth;
@@ -43,32 +47,20 @@ function resize() {
 
   seed();
 }
+
 window.addEventListener("resize", resize);
 resize();
 
-// ---------------- INIT ----------------
+// ---------------- SEED ----------------
 function seed() {
   grid.fill(EMPTY);
 
-  const cx = Math.floor(GRID_W / 3);
-  const cy = Math.floor(GRID_H / 2);
-  const r = 10;
-
-  // ---------------- STONE SPHERE ----------------
-  for (let y = -r; y <= r; y++) {
-    for (let x = -r; x <= r; x++) {
-      if (x * x + y * y <= r * r) {
-        const gx = cx + x;
-        const gy = cy + y;
-
-        if (inBounds(gx, gy)) {
-          grid[idx(gx, gy)] = STONE;
-        }
-      }
-    }
+  // stone floor
+  for (let x = 0; x < GRID_W; x++) {
+    grid[idx(x, GRID_H - 1)] = STONE;
   }
 
-  // ---------------- SAND SPHERE ----------------
+  // sand ball
   const sx = Math.floor(GRID_W / 2);
   const sy = Math.floor(GRID_H / 3);
   const sr = 8;
@@ -78,16 +70,13 @@ function seed() {
       if (x * x + y * y <= sr * sr) {
         const gx = sx + x;
         const gy = sy + y;
-
-        if (inBounds(gx, gy)) {
-          grid[idx(gx, gy)] = SAND;
-        }
+        if (inBounds(gx, gy)) grid[idx(gx, gy)] = SAND;
       }
     }
   }
 
-  // ---------------- WATER SPHERE ----------------
-  const wx = Math.floor(GRID_W * 0.75);
+  // water ball
+  const wx = Math.floor(GRID_W * 0.7);
   const wy = Math.floor(GRID_H / 3);
   const wr = 6;
 
@@ -96,10 +85,7 @@ function seed() {
       if (x * x + y * y <= wr * wr) {
         const gx = wx + x;
         const gy = wy + y;
-
-        if (inBounds(gx, gy)) {
-          grid[idx(gx, gy)] = WATER;
-        }
+        if (inBounds(gx, gy)) grid[idx(gx, gy)] = WATER;
       }
     }
   }
@@ -125,58 +111,72 @@ function step() {
 
       // ---------------- SAND ----------------
       if (v === SAND) {
+
+        // down
         if (isEmpty(x, y + 1)) {
           next[idx(x, y + 1)] = SAND;
-        } else {
-          const dir = Math.random() < 0.5 ? -1 : 1;
-
-          if (isEmpty(x + dir, y + 1)) {
-            next[idx(x + dir, y + 1)] = SAND;
-          } else if (isEmpty(x - dir, y + 1)) {
-            next[idx(x - dir, y + 1)] = SAND;
-          } else {
-            next[i] = SAND;
-          }
+          continue;
         }
+
+        // diagonals
+        const dir = randDir();
+
+        if (isEmpty(x + dir, y + 1)) {
+          next[idx(x + dir, y + 1)] = SAND;
+          continue;
+        }
+
+        if (isEmpty(x - dir, y + 1)) {
+          next[idx(x - dir, y + 1)] = SAND;
+          continue;
+        }
+
+        next[i] = SAND;
         continue;
       }
 
       // ---------------- WATER ----------------
       if (v === WATER) {
 
-  // 1. fall straight down
-  if (isEmpty(x, y + 1)) {
-    next[idx(x, y + 1)] = WATER;
-    continue;
+        // down first
+        if (isEmpty(x, y + 1)) {
+          next[idx(x, y + 1)] = WATER;
+          continue;
+        }
+
+        // sideways flow (one direction per tick)
+        const dir = randDir();
+
+        if (isEmpty(x + dir, y)) {
+          next[idx(x + dir, y)] = WATER;
+          continue;
+        }
+
+        if (isEmpty(x - dir, y)) {
+          next[idx(x - dir, y)] = WATER;
+          continue;
+        }
+
+        // diagonal fallback
+        if (isEmpty(x + dir, y + 1)) {
+          next[idx(x + dir, y + 1)] = WATER;
+          continue;
+        }
+
+        if (isEmpty(x - dir, y + 1)) {
+          next[idx(x - dir, y + 1)] = WATER;
+          continue;
+        }
+
+        next[i] = WATER;
+        continue;
+      }
+    }
   }
 
-  // 2. horizontal movement (like “flowing”)
-  const dir = Math.random() < 0.5 ? -1 : 1;
-
-  if (isEmpty(x + dir, y)) {
-    next[idx(x + dir, y)] = WATER;
-    continue;
-  }
-
-  if (isEmpty(x - dir, y)) {
-    next[idx(x - dir, y)] = WATER;
-    continue;
-  }
-
-  // 3. diagonal fallback
-  if (isEmpty(x + dir, y + 1)) {
-    next[idx(x + dir, y + 1)] = WATER;
-    continue;
-  }
-
-  if (isEmpty(x - dir, y + 1)) {
-    next[idx(x - dir, y + 1)] = WATER;
-    continue;
-  }
-
-  // 4. stay
-  next[i] = WATER;
-  continue;
+  const tmp = grid;
+  grid = next;
+  next = tmp;
 }
 
 // ---------------- DRAW ----------------
