@@ -50,30 +50,55 @@ resize();
 function seed() {
   grid.fill(EMPTY);
 
-  // stone floor
-  for (let x = 0; x < GRID_W; x++) {
-    grid[idx(x, GRID_H - 1)] = STONE;
-  }
+  const cx = Math.floor(GRID_W / 3);
+  const cy = Math.floor(GRID_H / 2);
+  const r = 10;
 
-  // water left & right sources
-  const cy = Math.floor(GRID_H / 4);
-
-  for (let y = cy - 5; y < cy + 5; y++) {
-    if (inBounds(5, y)) grid[idx(5, y)] = WATER;
-    if (inBounds(GRID_W - 6, y)) grid[idx(GRID_W - 6, y)] = WATER;
-  }
-
-  // sand blob in center
-  const cx = Math.floor(GRID_W / 2);
-  const r = 8;
-
+  // ---------------- STONE SPHERE ----------------
   for (let y = -r; y <= r; y++) {
     for (let x = -r; x <= r; x++) {
       if (x * x + y * y <= r * r) {
         const gx = cx + x;
         const gy = cy + y;
+
+        if (inBounds(gx, gy)) {
+          grid[idx(gx, gy)] = STONE;
+        }
+      }
+    }
+  }
+
+  // ---------------- SAND SPHERE ----------------
+  const sx = Math.floor(GRID_W / 2);
+  const sy = Math.floor(GRID_H / 3);
+  const sr = 8;
+
+  for (let y = -sr; y <= sr; y++) {
+    for (let x = -sr; x <= sr; x++) {
+      if (x * x + y * y <= sr * sr) {
+        const gx = sx + x;
+        const gy = sy + y;
+
         if (inBounds(gx, gy)) {
           grid[idx(gx, gy)] = SAND;
+        }
+      }
+    }
+  }
+
+  // ---------------- WATER SPHERE ----------------
+  const wx = Math.floor(GRID_W * 0.75);
+  const wy = Math.floor(GRID_H / 3);
+  const wr = 6;
+
+  for (let y = -wr; y <= wr; y++) {
+    for (let x = -wr; x <= wr; x++) {
+      if (x * x + y * y <= wr * wr) {
+        const gx = wx + x;
+        const gy = wy + y;
+
+        if (inBounds(gx, gy)) {
+          grid[idx(gx, gy)] = WATER;
         }
       }
     }
