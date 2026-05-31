@@ -45,8 +45,8 @@
         else if (keys['ArrowRight']) player.velX = SPEED;
         else player.velX = 0;
 
-        // Jump
-        if (keys['Space'] && !player.jumping) {
+        // Jump - Now using 'KeyZ'
+        if (keys['KeyZ'] && !player.jumping) {
             player.velY = JUMP_FORCE;
             player.jumping = true;
         }
