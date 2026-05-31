@@ -10,20 +10,25 @@ export default class Simulation {
 
         this.world.beginTick();
 
-        // checkerboard update = removes scan bias
         const parity = this.world.tick % 2;
 
-        for (let y = this.world.height - 1; y >= 0; y--) {
+        // checkerboard update removes sweep bias
+        for (let y = 0; y < this.world.height; y++) {
             for (let x = 0; x < this.world.width; x++) {
 
-                if ((x + y) % 2 !== parity) continue;
+                if ((x + y) % 2 !== parity)
+                    continue;
 
                 const cell = this.world.get(x, y);
 
-                if (!cell) continue;
-                if (this.world.wasUpdatedThisTick(cell)) continue;
+                if (!cell)
+                    continue;
+
+                if (this.world.wasUpdatedThisTick(cell))
+                    continue;
 
                 this.updateCell(x, y, cell);
+
                 this.world.markUpdated(cell);
             }
         }
@@ -32,82 +37,96 @@ export default class Simulation {
     }
 
     /*
-     * =========================================================
-     * SYMMETRIC LOCAL EXCHANGE (NO DIRECTIONAL "MOVEMENT")
-     * =========================================================
+     * =====================================================
+     * CORE PHYSICS: PRESSURE RELAXATION ONLY
+     * =====================================================
+     *
+     * No direction choice.
+     * No scoring.
+     * No gravity.
+     * No "best move".
+     *
+     * Just local imbalance resolution.
      */
 
     updateCell(x, y, cell) {
 
-        // pick ONE random neighbor pair (no evaluation, no scoring)
+        // pick ONE random neighbor (fully symmetric)
         const dx = (Math.random() * 3 | 0) - 1;
         const dy = (Math.random() * 3 | 0) - 1;
 
-        if (dx === 0 && dy === 0) return;
+        if (dx === 0 && dy === 0)
+            return;
 
         const nx = x + dx;
         const ny = y + dy;
 
-        if (!this.world.inBounds(nx, ny)) return;
+        if (!this.world.inBounds(nx, ny))
+            return;
 
         const other = this.world.get(nx, ny);
 
-        if (!other) return;
+        if (!other)
+            return;
 
-        this.exchange(cell, other);
+        this.resolvePressure(cell, other);
     }
 
     /*
-     * =========================================================
-     * FIELD RELAXATION (CORE PHYSICS OPERATOR)
-     * =========================================================
+     * =====================================================
+     * PRESSURE MODEL (THIS IS THE ENTIRE SYSTEM)
+     * =====================================================
      *
-     * No movement. No direction. No gravity.
-     * Just local equilibration of properties.
+     * mass + compressibility = pressure proxy
+     *
+     * No direction.
+     * Just equalization of state differences.
      */
 
-    exchange(a, b, ax, ay, bx, by) {
+    resolvePressure(a, b) {
 
-    const rate = 0.25;
+        const pa = a.mass * (a.compressibility ?? 1);
+        const pb = b.mass * (b.compressibility ?? 1);
 
-    // spatial bias stays extremely small
-    const bias = (ay - by) * 0.01;
+        const dp = pa - pb;
 
-    // inertia prevents collapse (THIS IS KEY)
-    const inertiaA = 1 + a.energy * 0.005;
-    const inertiaB = 1 + b.energy * 0.005;
+        // equilibrium → do nothing
+        if (Math.abs(dp) < 0.01)
+            return;
 
-    const influenceA = (1 + bias) / inertiaA;
-    const influenceB = (1 - bias) / inertiaB;
+        const transfer = dp * 0.25;
 
-    // mass (now resistant to flattening)
-    const dm = a.mass - b.mass;
+        // symmetric relaxation
+        a.mass -= transfer;
+        b.mass += transfer;
 
-    a.mass -= dm * rate * influenceA;
-    b.mass += dm * rate * influenceB;
+        /*
+         * Energy follows deformation slightly
+         * (this creates viscosity-like behavior)
+         */
 
-    // energy (slightly self-stabilizing)
-    const de = a.energy - b.energy;
+        const energyFlow = transfer * 0.15;
 
-    a.energy -= de * rate * influenceA;
-    b.energy += de * rate * influenceB;
+        a.energy -= energyFlow;
+        b.energy += energyFlow;
 
-    // cohesion (this is what creates “structure memory”)
-    const dc = a.cohesion - b.cohesion;
+        /*
+         * Optional cohesion smoothing
+         * (kept weak so structures can still form)
+         */
 
-    a.cohesion -= dc * rate * influenceA;
-    b.cohesion += dc * rate * influenceB;
+        const dc = (a.cohesion - b.cohesion) * 0.05;
 
-    // conductivity
-    const d = a.conductivity - b.conductivity;
+        a.cohesion -= dc;
+        b.cohesion += dc;
+    }
 
-    a.conductivity -= d * rate * influenceA;
-    b.conductivity += d * rate * influenceB;
-}
     /*
-     * =========================================================
-     * ENERGY DIFFUSION (kept separate but symmetric)
-     * =========================================================
+     * =====================================================
+     * ENERGY DIFFUSION
+     * =====================================================
+     *
+     * This is the ONLY smoothing process.
      */
 
     diffuseEnergy() {
@@ -121,20 +140,24 @@ export default class Simulation {
 
             for (const n of neighbors) {
 
-                const delta =
-                    (cell.energy - n.cell.energy) * 0.05;
+                const other = n.cell;
 
-                if (Math.abs(delta) < 0.01) continue;
+                const delta =
+                    (cell.energy - other.energy) * 0.05;
+
+                if (Math.abs(delta) < 0.01)
+                    continue;
 
                 transfers.push({
                     a: cell,
-                    b: n.cell,
+                    b: other,
                     amount: delta
                 });
             }
         });
 
         for (const t of transfers) {
+
             t.a.energy -= t.amount;
             t.b.energy += t.amount;
         }
